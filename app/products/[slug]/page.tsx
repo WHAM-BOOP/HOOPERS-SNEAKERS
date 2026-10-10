@@ -6,9 +6,9 @@ import { AddToCart } from "@/components/products/add-to-cart";
 import { ProductGallery } from "@/components/products/product-gallery";
 import { ProductGrid } from "@/components/products/product-card";
 import { Badge } from "@/components/ui/badge";
+import { DemoNotice } from "@/components/ui/demo-notice";
 import { Notice } from "@/components/ui/notice";
 import { Skeleton } from "@/components/ui/skeleton";
-import { SetupHelpCard } from "@/components/ui/setup-help-card";
 import { getEnvStatus } from "@/lib/env";
 import {
   getProductBySlug,
@@ -25,14 +25,10 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const status = getEnvStatus();
-  if (!status.supabaseReady) {
-    return { title: "Product" };
-  }
-
   const result = await getProductBySlug(slug);
   if (!result.ok || !result.data) {
-    return { title: "Product not found" };
+    // Throwing here (before streaming) ensures a real 404 status code.
+    notFound();
   }
 
   const product = result.data;
@@ -58,14 +54,6 @@ export default async function ProductPage({
   const { slug } = await params;
   const status = getEnvStatus();
 
-  if (!status.supabaseReady) {
-    return (
-      <div className="container-page py-10">
-        <SetupHelpCard />
-      </div>
-    );
-  }
-
   const result = await getProductBySlug(slug);
   if (!result.ok) {
     return (
@@ -83,6 +71,11 @@ export default async function ProductPage({
   return (
     <div className="container-page py-8">
       <Breadcrumb product={product} />
+      {!status.supabaseReady ? (
+        <div className="mt-4">
+          <DemoNotice />
+        </div>
+      ) : null}
 
       <div className="mt-6 grid gap-10 lg:grid-cols-2">
         <ProductGallery

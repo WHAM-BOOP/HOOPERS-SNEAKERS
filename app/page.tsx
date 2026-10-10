@@ -4,6 +4,7 @@ import {
   FeaturedProductsSection,
   ValueProps,
 } from "@/components/home/home-sections";
+import { DemoNotice } from "@/components/ui/demo-notice";
 import { EmptyState } from "@/components/ui/empty-state";
 import {
   getCategories,
@@ -14,13 +15,12 @@ import { getEnvStatus } from "@/lib/env";
 export default async function HomePage() {
   const status = getEnvStatus();
   const [featured, categories] = await Promise.all([
-    status.supabaseReady ? getFeaturedProducts(8) : null,
-    status.supabaseReady ? getCategories() : null,
+    getFeaturedProducts(8),
+    getCategories(),
   ]);
 
-  const featuredProducts =
-    featured && featured.ok ? featured.data : null;
-  const categoryList = categories && categories.ok ? categories.data : null;
+  const featuredProducts = featured.ok ? featured.data : null;
+  const categoryList = categories.ok ? categories.data : null;
 
   return (
     <>
@@ -31,7 +31,10 @@ export default async function HomePage() {
         configured={status.supabaseReady}
       />
 
-      <CategoriesSection categories={categoryList} configured={status.supabaseReady} />
+      <CategoriesSection
+        categories={categoryList}
+        configured={status.supabaseReady}
+      />
 
       <ValueProps />
 
@@ -110,8 +113,8 @@ function Hero() {
 
         <div className="relative hidden aspect-[4/5] max-h-[560px] w-full overflow-hidden rounded-md border border-paper/10 lg:block">
           <Image
-            src="https://images.unsplash.com/photo-1552346154-21d32810aba3?auto=format&fit=crop&w=1000&q=80"
-            alt="Pair of basketball sneakers on a court"
+            src="/images/court-hero.jpg"
+            alt="Basketball shoes and a ball on a hardwood court"
             fill
             priority
             sizes="50vw"
@@ -133,7 +136,13 @@ function CategoriesSection({
   configured,
 }: {
   categories:
-    | { id: string; slug: string; name: string; description: string | null; image_url: string | null }[]
+    | {
+        id: string;
+        slug: string;
+        name: string;
+        description: string | null;
+        image_url: string | null;
+      }[]
     | null;
   configured: boolean;
 }) {
@@ -151,22 +160,9 @@ function CategoriesSection({
         </Link>
       </div>
 
-      <div className="mt-8">
-        {!configured ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {["Basketball", "Training", "Gymnastics", "Lifestyle"].map((name) => (
-              <div
-                key={name}
-                className="rounded-md border border-dashed border-line-strong bg-surface px-5 py-10 text-center"
-              >
-                <p className="text-[15px] font-semibold text-muted">{name}</p>
-                <p className="mt-1 text-[12.5px] text-muted/70">
-                  Appears after setup
-                </p>
-              </div>
-            ))}
-          </div>
-        ) : categories && categories.length > 0 ? (
+      <div className="mt-8 space-y-6">
+        {!configured ? <DemoNotice compact /> : null}
+        {categories && categories.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {categories.map((category) => (
               <Link

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import { DemoNotice } from "@/components/ui/demo-notice";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Notice } from "@/components/ui/notice";
-import { SetupHelpCard } from "@/components/ui/setup-help-card";
 import { getEnvStatus } from "@/lib/env";
 import { getCategories } from "@/lib/products/queries";
 
@@ -30,12 +30,9 @@ export default async function CollectionsPage() {
         </p>
       </header>
 
-      <div className="mt-10">
-        {!status.supabaseReady ? (
-          <SetupHelpCard />
-        ) : (
-          <CollectionsGrid />
-        )}
+      <div className="mt-10 space-y-6">
+        {!status.supabaseReady ? <DemoNotice /> : null}
+        <CollectionsGrid />
       </div>
     </div>
   );

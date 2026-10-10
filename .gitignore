@@ -30,3 +30,7 @@ npm-debug.log*
 
 # typescript
 *.tsbuildinfo
+
+# scratch assets
+image-search/
+contact-sheet.jpg

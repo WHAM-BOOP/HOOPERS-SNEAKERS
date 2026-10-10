@@ -17,6 +17,8 @@ export type LastOrder = {
   state: string;
   items: { name: string; size: string; quantity: number; unitPriceCents: number }[];
   placedAt: string;
+  /** True when created in demo mode (no Supabase) — not a real order. */
+  demo?: boolean;
 };
 
 const KEY = "hoopers.last-order.v1";
@@ -50,6 +52,7 @@ export function readLastOrder(): LastOrder | null {
       state: o.state ?? "",
       items: Array.isArray(o.items) ? o.items : [],
       placedAt: o.placedAt ?? new Date().toISOString(),
+      demo: o.demo === true,
     };
   } catch {
     return null;

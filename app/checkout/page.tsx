@@ -13,6 +13,7 @@ import {
   fieldErrorsFromZod,
 } from "@/lib/orders/checkout";
 import { saveLastOrder } from "@/lib/orders/last-order";
+import { getEnvStatus } from "@/lib/env";
 import { formatMoney } from "@/lib/utils";
 
 type FieldErrors = Record<string, string>;
@@ -90,6 +91,34 @@ export default function CheckoutPage() {
 
     setSubmitting(true);
     try {
+      // Demo mode (Supabase unconfigured): simulate the confirmation locally
+      // and say so — nothing is submitted or saved.
+      const env = getEnvStatus();
+      if (!env.supabaseReady) {
+        const demoOrderNumber = `HS-DEMO-${Math.floor(1000 + Math.random() * 9000)}`;
+        saveLastOrder({
+          orderNumber: demoOrderNumber,
+          subtotalCents,
+          shippingCents,
+          totalCents,
+          fullName: validated.data.fullName,
+          email: validated.data.email,
+          city: validated.data.city,
+          state: validated.data.state,
+          items: items.map((item) => ({
+            name: item.name,
+            size: item.size,
+            quantity: item.quantity,
+            unitPriceCents: item.unitPriceCents,
+          })),
+          placedAt: new Date().toISOString(),
+          demo: true,
+        });
+        clearCart();
+        router.push("/checkout/success");
+        return;
+      }
+
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

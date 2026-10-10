@@ -1,8 +1,10 @@
 # Setup & Deployment Guide
 
-Complete checklist to take this project from clone to production. The app is
-built to **degrade honestly**: without Supabase credentials it shows a
-"connect your database" state (see `/setup`) and never fabricates data.
+Complete checklist to take this project from clone to production. Without
+Supabase credentials the app runs in a clearly-labeled **demo mode** (sample
+catalog, working cart/checkout simulation, explicit “nothing saved” messaging)
+so the storefront is fully browsable; add the keys below and it switches to
+live data with no demo content mixed in.
 
 ---
 

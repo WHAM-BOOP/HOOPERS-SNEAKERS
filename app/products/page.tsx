@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { CatalogFilters } from "@/components/products/catalog-filters";
 import { ProductGrid } from "@/components/products/product-card";
+import { DemoNotice } from "@/components/ui/demo-notice";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Notice } from "@/components/ui/notice";
 import { Pagination } from "@/components/ui/pagination";
 import { ProductGridSkeleton } from "@/components/ui/skeleton";
-import { SetupHelpCard } from "@/components/ui/setup-help-card";
 import { getEnvStatus } from "@/lib/env";
 import {
   getAvailableSizes,
@@ -95,29 +95,20 @@ export default async function ProductsPage({
       </header>
 
       <div className="mt-8">
-        {status.supabaseReady ? (
-          <Suspense fallback={<FilterBarFallback />}>
-            <FilterBar form={form} />
-          </Suspense>
-        ) : (
-          <CatalogFilters
-            action="/products"
-            categories={[]}
-            brands={[]}
-            sizes={[]}
-            current={form}
-          />
-        )}
+        <Suspense fallback={<FilterBarFallback />}>
+          <FilterBar form={form} />
+        </Suspense>
       </div>
 
       <section aria-label="Product results" className="mt-10">
         {!status.supabaseReady ? (
-          <SetupHelpCard />
-        ) : (
-          <Suspense key={JSON.stringify(filter)} fallback={<ProductGridSkeleton />}>
-            <ProductResults filter={filter} form={form} />
-          </Suspense>
-        )}
+          <div className="mb-6">
+            <DemoNotice />
+          </div>
+        ) : null}
+        <Suspense key={JSON.stringify(filter)} fallback={<ProductGridSkeleton />}>
+          <ProductResults filter={filter} form={form} />
+        </Suspense>
       </section>
     </div>
   );

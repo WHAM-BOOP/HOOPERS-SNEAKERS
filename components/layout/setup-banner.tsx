@@ -13,23 +13,24 @@ export function SetupBanner() {
   return (
     <div
       role="region"
-      aria-label="Setup required"
+      aria-label="Demo mode"
       className="border-b border-warning/40 bg-warning-soft"
     >
       <div className="container-page flex flex-col gap-2 py-2.5 text-[13px] text-warning sm:flex-row sm:items-center sm:justify-between">
         <p>
-          <strong className="font-semibold">Supabase is not connected.</strong>{" "}
-          Catalog and orders are disabled until the store is configured —{" "}
+          <strong className="font-semibold">Demo mode.</strong> Sample catalog
+          is showing — cart and checkout work, but orders are not saved until
+          Supabase is connected ({" "}
           <code className="rounded-xs bg-warning/10 px-1 py-0.5 text-[12px]">
             {status.missing.join(", ")}
           </code>{" "}
-          {status.missing.length === 1 ? "is" : "are"} missing.
+          missing).
         </p>
         <Link
           href="/setup"
           className="shrink-0 font-semibold underline underline-offset-2 hover:no-underline"
         >
-          Open setup guide →
+          Connect Supabase →
         </Link>
       </div>
     </div>

@@ -7,9 +7,11 @@ who moves. Pay-on-delivery checkout, real inventory, and an admin dashboard.
 **Stack:** Next.js 15 (App Router) · TypeScript (strict) · Tailwind CSS v4 ·
 Supabase (PostgreSQL + RLS, Auth, Storage) · Vercel.
 
-> **No fake data.** Until Supabase credentials are configured, the site runs
-> in an explicit “connect your database” state (see `/setup`) instead of
-> demo products. Every feature connects to a real implementation.
+> **Two modes, one codebase.** With no Supabase keys configured the store runs
+> in a clearly-labeled **demo mode**: a sample catalog, fully working
+> cart/checkout flow, and explicit “nothing was saved” messaging. Add your
+> Supabase keys and the exact same app switches to live data — real products,
+> real orders, real auth — with **zero demo data mixed in**.
 
 ---
 
@@ -47,13 +49,26 @@ Supabase (PostgreSQL + RLS, Auth, Storage) · Vercel.
 
 ```bash
 npm install
-cp .env.example .env.local   # add your Supabase keys (docs/SETUP.md)
+npm run dev            # runs immediately in demo mode (sample catalog)
+```
+
+Going live — add Supabase keys and run migrations:
+
+```bash
+cp .env.example .env.local   # docs/SETUP.md walks through every value
 npm run dev
 ```
 
 Full setup (migrations, auth, admin promotion, Vercel, security tests):
 **[docs/SETUP.md](docs/SETUP.md)** · Architecture & schema:
 **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**
+
+### Deploy to Vercel
+
+Push to GitHub → [vercel.com/new](https://vercel.com/new) → import the repo →
+add the env vars from `.env.example` (docs/SETUP.md §4) → Deploy. The site
+works out of the box in demo mode and upgrades to live data when the Supabase
+variables are present.
 
 ## Scripts
 
@@ -119,6 +134,9 @@ Tracked honestly — none of these pretend to work:
   project (unit tests + SQL RLS suite are in place).
 - [ ] **Returns/refunds flow** — policy is documented in terms; no
   self-service returns UI yet.
+- [ ] **Hard 404 status codes** — unknown product/collection URLs render the
+  404 page with `noindex` (Next.js streams `notFound()` as a soft 404);
+  revisit when Next exposes status control for streamed responses.
 
 ## License
 

@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductGrid } from "@/components/products/product-card";
+import { DemoNotice } from "@/components/ui/demo-notice";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Notice } from "@/components/ui/notice";
 import { Pagination } from "@/components/ui/pagination";
 import { ProductGridSkeleton } from "@/components/ui/skeleton";
-import { SetupHelpCard } from "@/components/ui/setup-help-card";
 import { getEnvStatus } from "@/lib/env";
 import {
   getCategoryBySlug,
@@ -24,11 +24,11 @@ export async function generateMetadata({
   params: Promise<Params>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const status = getEnvStatus();
-  if (!status.supabaseReady) return { title: "Collection" };
-
   const result = await getCategoryBySlug(slug);
-  if (!result.ok || !result.data) return { title: "Collection not found" };
+  if (!result.ok || !result.data) {
+    // Throwing here (before streaming) ensures a real 404 status code.
+    notFound();
+  }
 
   return {
     title: result.data.name,
@@ -52,13 +52,6 @@ export default async function CollectionPage({
   const page = Number.isFinite(pageRaw) ? clamp(Math.trunc(pageRaw), 1, 10_000) : 1;
 
   const status = getEnvStatus();
-  if (!status.supabaseReady) {
-    return (
-      <div className="container-page py-10">
-        <SetupHelpCard />
-      </div>
-    );
-  }
 
   const categoryResult = await getCategoryBySlug(slug);
   if (!categoryResult.ok) {
@@ -105,7 +98,8 @@ export default async function CollectionPage({
         ) : null}
       </header>
 
-      <section aria-label={`Products in ${category.name}`} className="mt-10">
+      <section aria-label={`Products in ${category.name}`} className="mt-10 space-y-6">
+        {!status.supabaseReady ? <DemoNotice /> : null}
         <Suspense key={page} fallback={<ProductGridSkeleton />}>
           <CollectionProducts slug={slug} page={page} />
         </Suspense>

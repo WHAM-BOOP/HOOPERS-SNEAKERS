@@ -39,16 +39,38 @@ export default function CheckoutSuccessPage() {
         </div>
       ) : (
         <div className="mx-auto max-w-2xl">
-          <div className="rounded-md border border-success/30 bg-success-soft px-6 py-8 text-center">
-            <p className="eyebrow text-success">Order confirmed</p>
+          <div
+            className={`rounded-md border px-6 py-8 text-center ${
+              order.demo
+                ? "border-warning/40 bg-warning-soft"
+                : "border-success/30 bg-success-soft"
+            }`}
+          >
+            <p className={`eyebrow ${order.demo ? "text-warning" : "text-success"}`}>
+              {order.demo ? "Demo checkout complete" : "Order confirmed"}
+            </p>
             <h1 className="mt-2 text-3xl font-bold">
               Thanks, {order.fullName.split(" ")[0] || order.fullName}!
             </h1>
-            <p className="mt-3 text-[15px] text-success">
-              Your order{" "}
-              <strong className="font-bold">{order.orderNumber}</strong> is in.
-              We will contact you at <strong>{order.email}</strong> to confirm
-              before delivery.
+            <p className={`mt-3 text-[15px] ${order.demo ? "text-warning" : "text-success"}`}>
+              {order.demo ? (
+                <>
+                  This was a <strong>demo order</strong> ({order.orderNumber}) —
+                  nothing was charged or saved. Connect Supabase to accept real
+                  orders (see the{" "}
+                  <Link href="/setup" className="font-semibold underline">
+                    setup guide
+                  </Link>
+                  ).
+                </>
+              ) : (
+                <>
+                  Your order{" "}
+                  <strong className="font-bold">{order.orderNumber}</strong> is in.
+                  We will contact you at <strong>{order.email}</strong> to confirm
+                  before delivery.
+                </>
+              )}
             </p>
           </div>
 
@@ -102,7 +124,7 @@ export default function CheckoutSuccessPage() {
             className="mt-8 rounded-md border border-line bg-surface p-6"
           >
             <h2 id="next-heading" className="text-lg font-bold">
-              What happens next
+              {order.demo ? "How real orders work" : "What happens next"}
             </h2>
             <ol className="mt-4 space-y-3 text-[14.5px] text-muted">
               <li className="flex gap-3">

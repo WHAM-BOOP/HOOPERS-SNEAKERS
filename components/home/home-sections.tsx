@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ProductGrid } from "@/components/products/product-card";
 import { EmptyState, SectionHeading } from "@/components/ui/empty-state";
-import { SetupHelpCard } from "@/components/ui/setup-help-card";
+import { DemoNotice } from "@/components/ui/demo-notice";
 import type { ProductWithRelations } from "@/lib/supabase/types";
 
 export function FeaturedProductsSection({
@@ -25,10 +25,9 @@ export function FeaturedProductsSection({
         }
       />
 
-      <div className="mt-10">
-        {!configured ? (
-          <SetupHelpCard />
-        ) : products && products.length > 0 ? (
+      <div className="mt-10 space-y-6">
+        {!configured ? <DemoNotice /> : null}
+        {products && products.length > 0 ? (
           <ProductGrid products={products} />
         ) : (
           <EmptyState

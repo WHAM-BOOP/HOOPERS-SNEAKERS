@@ -1,3 +1,10 @@
+import { getEnvStatus } from "@/lib/env";
+import {
+  DEMO_CATEGORIES,
+  DEMO_PRODUCTS,
+  demoBrands,
+  demoSizes,
+} from "@/lib/demo/catalog";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import type {
   CategoryRow,
@@ -6,8 +13,14 @@ import type {
 } from "@/lib/supabase/types";
 
 /**
- * Server-side catalog queries. Every function returns `null` when Supabase
- * is not configured — pages render the /setup guidance instead of fake data.
+ * Server-side catalog queries.
+ *
+ * Two sources of truth:
+ * - Supabase configured  → live database data (demo never mixes in).
+ * - Supabase unconfigured → clearly-labeled demo catalog (lib/demo/catalog)
+ *   so the storefront stays fully browsable while the store is unprovisioned.
+ * Fetch failures while configured return explicit errors — never silent
+ * fallback to demo data.
  */
 
 export type CatalogResult<T> =
@@ -38,13 +51,107 @@ function baseProductQuery() {
   `;
 }
 
+/* ---------------------------------------------------------- demo layer -- */
+
+function demoFilterProducts(filter: ProductFilter): ProductWithRelations[] {
+  let items = DEMO_PRODUCTS.filter((p) => filter.includeInactive || p.active);
+
+  if (filter.category) {
+    items = items.filter((p) => p.category?.slug === filter.category);
+  }
+  if (filter.brand) {
+    items = items.filter((p) => p.brand === filter.brand);
+  }
+  if (typeof filter.minPriceCents === "number") {
+    items = items.filter((p) => p.price_cents >= (filter.minPriceCents ?? 0));
+  }
+  if (typeof filter.maxPriceCents === "number") {
+    items = items.filter((p) => p.price_cents <= (filter.maxPriceCents ?? Infinity));
+  }
+  if (filter.size) {
+    items = items.filter((p) =>
+      p.variants.some((v) => v.size === filter.size && v.stock > 0),
+    );
+  }
+  if (filter.q) {
+    const term = filter.q.toLowerCase();
+    items = items.filter((p) =>
+      [p.name, p.brand, p.short_description ?? ""]
+        .join(" ")
+        .toLowerCase()
+        .includes(term),
+    );
+  }
+
+  switch (filter.sort ?? "featured") {
+    case "newest":
+      items = [...items].sort((a, b) => b.created_at.localeCompare(a.created_at));
+      break;
+    case "price-asc":
+      items = [...items].sort((a, b) => a.price_cents - b.price_cents);
+      break;
+    case "price-desc":
+      items = [...items].sort((a, b) => b.price_cents - a.price_cents);
+      break;
+    case "name":
+      items = [...items].sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    default:
+      items = [...items].sort(
+        (a, b) => Number(b.featured) - Number(a.featured) ||
+          b.created_at.localeCompare(a.created_at),
+      );
+  }
+  return items;
+}
+
+function demoPaginate(
+  items: ProductWithRelations[],
+  page: number,
+): {
+  products: ProductWithRelations[];
+  total: number;
+  page: number;
+  totalPages: number;
+} {
+  const total = items.length;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const start = (page - 1) * PAGE_SIZE;
+  return {
+    products: items.slice(start, start + PAGE_SIZE),
+    total,
+    page,
+    totalPages,
+  };
+}
+
+/* -------------------------------------------------------- live queries -- */
+
 export async function getProducts(
   filter: ProductFilter = {},
-): Promise<CatalogResult<{ products: ProductWithRelations[]; total: number; page: number; totalPages: number }>> {
-  const supabase = await createSupabaseServerClient();
-  if (!supabase) return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
-
+): Promise<
+  CatalogResult<{
+    products: ProductWithRelations[];
+    total: number;
+    page: number;
+    totalPages: number;
+  }>
+> {
+  const status = getEnvStatus();
   const page = Math.max(1, filter.page ?? 1);
+
+  if (!status.supabaseReady) {
+    return {
+      ok: true,
+      data: demoPaginate(demoFilterProducts(filter), page),
+    };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  if (!supabase) {
+    return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  }
+
   const from = (page - 1) * PAGE_SIZE;
 
   try {
@@ -139,8 +246,19 @@ export async function getProductBySlug(
   slug: string,
   options: { includeInactive?: boolean } = {},
 ): Promise<CatalogResult<ProductWithRelations | null>> {
+  const status = getEnvStatus();
+  if (!status.supabaseReady) {
+    const found =
+      DEMO_PRODUCTS.find(
+        (p) => p.slug === slug && (options.includeInactive || p.active),
+      ) ?? null;
+    return { ok: true, data: found };
+  }
+
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  if (!supabase) {
+    return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  }
 
   try {
     let query = supabase
@@ -163,8 +281,20 @@ export async function getProductBySlug(
 export async function getFeaturedProducts(
   limit = 8,
 ): Promise<CatalogResult<ProductWithRelations[]>> {
+  const status = getEnvStatus();
+  if (!status.supabaseReady) {
+    return {
+      ok: true,
+      data: demoFilterProducts({ sort: "featured" })
+        .filter((p) => p.featured)
+        .slice(0, limit),
+    };
+  }
+
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  if (!supabase) {
+    return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  }
 
   try {
     const { data, error } = await supabase
@@ -189,8 +319,25 @@ export async function getRelatedProducts(
   product: ProductWithRelations,
   limit = 4,
 ): Promise<CatalogResult<ProductWithRelations[]>> {
+  const status = getEnvStatus();
+  if (!status.supabaseReady) {
+    const sameCategory = DEMO_PRODUCTS.filter(
+      (p) => p.id !== product.id && p.category_id === product.category_id,
+    );
+    const others = DEMO_PRODUCTS.filter(
+      (p) => p.id !== product.id && p.category_id !== product.category_id,
+    );
+    return {
+      ok: true,
+      data: [...sameCategory, ...others]
+        .slice(0, limit),
+    };
+  }
+
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  if (!supabase) {
+    return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  }
 
   try {
     const { data, error } = await supabase
@@ -228,8 +375,15 @@ export async function getRelatedProducts(
 }
 
 export async function getCategories(): Promise<CatalogResult<CategoryRow[]>> {
+  const status = getEnvStatus();
+  if (!status.supabaseReady) {
+    return { ok: true, data: DEMO_CATEGORIES };
+  }
+
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  if (!supabase) {
+    return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  }
 
   try {
     const { data, error } = await supabase
@@ -250,8 +404,18 @@ export async function getCategories(): Promise<CatalogResult<CategoryRow[]>> {
 export async function getCategoryBySlug(
   slug: string,
 ): Promise<CatalogResult<CategoryRow | null>> {
+  const status = getEnvStatus();
+  if (!status.supabaseReady) {
+    return {
+      ok: true,
+      data: DEMO_CATEGORIES.find((c) => c.slug === slug) ?? null,
+    };
+  }
+
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  if (!supabase) {
+    return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  }
 
   try {
     const { data, error } = await supabase
@@ -272,8 +436,15 @@ export async function getCategoryBySlug(
 
 /** Distinct brands for catalog filter UI. */
 export async function getBrands(): Promise<CatalogResult<string[]>> {
+  const status = getEnvStatus();
+  if (!status.supabaseReady) {
+    return { ok: true, data: demoBrands() };
+  }
+
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  if (!supabase) {
+    return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  }
 
   try {
     const { data, error } = await supabase
@@ -295,8 +466,15 @@ export async function getBrands(): Promise<CatalogResult<string[]>> {
 
 /** Distinct sizes (for filter chips), ordered numerically where possible. */
 export async function getAvailableSizes(): Promise<CatalogResult<string[]>> {
+  const status = getEnvStatus();
+  if (!status.supabaseReady) {
+    return { ok: true, data: demoSizes() };
+  }
+
   const supabase = await createSupabaseServerClient();
-  if (!supabase) return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  if (!supabase) {
+    return { ok: false, reason: "not-configured", message: "Supabase is not configured." };
+  }
 
   try {
     const { data, error } = await supabase
